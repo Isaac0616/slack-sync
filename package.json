@@ -1,0 +1,20 @@
+{
+  "name": "slack-sync",
+  "version": "0.0.1",
+  "description": "Sync two channels of different slack workspace",
+  "main": "index.js",
+  "author": "Po-Ning Tseng",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Isaac0616/slack-sync"
+  },
+  "devDependencies": {
+    "eslint": "^4.19.1",
+    "eslint-config-google": "^0.9.1"
+  },
+  "dependencies": {
+    "@slack/client": "^4.1.0",
+    "commander": "^2.15.1"
+  }
+}
