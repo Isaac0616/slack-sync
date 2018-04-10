@@ -45,6 +45,51 @@ function getChannelId(team) {
 }
 
 /**
+ * Get username by user ID.
+ * @param {Object} team
+ * @param {Object} userId
+ * @return {Promise} username
+ */
+function getUsername(team, userId) {
+  return new Promise((resolve, reject) => {
+    if (userId in users) {
+      resolve(users[userId].name);
+    } else {
+      team.web.users.info({user: userId})
+        .then((res) => {
+          users[userId] = res.user;
+          resolve(users[userId].name);
+        });
+    }
+  });
+}
+
+/**
+ * Preprocess text. Currently fix slack mentions.
+ * @param {Object} team
+ * @param {Object} text
+ * @return {Promise} text
+ */
+function preprocessText(team, text) {
+  const mentionRegex = /<@([A-Z0-9]+)>/;
+
+  return new Promise((resolve, reject) => {
+    if (match = text.match(mentionRegex)) {
+      getUsername(team, match[1])
+        .then((username) => {
+          text = text.replace(new RegExp(match[0], 'g'), `@${username}`);
+          preprocessText(team, text)
+            .then((text) => {
+              resolve(text);
+            });
+        });
+    } else {
+      resolve(text);
+    }
+  });
+}
+
+/**
  * Send messages from srcTeam to desTeam.
  * @param {Object} srcTeam Source team.
  * @param {Object} desTeam Destination team.
@@ -59,29 +104,20 @@ function connectTeam(srcTeam, desTeam) {
 
       switch (event.subtype) {
         case undefined: // normal message
-          if (event.user in users) {
-            desTeam.web.chat.postMessage({
-              channel: desTeam.channelId,
-              text: event.text,
-              as_user: false,
-              icon_url: users[event.user].profile.image_48,
-              link_names: true,
-              username: users[event.user].name,
-            });
-          } else {
-            srcTeam.web.users.info({user: event.user})
-              .then((res) => {
-                users[event.user] = res.user;
-                desTeam.web.chat.postMessage({
-                  channel: desTeam.channelId,
-                  text: event.text,
-                  as_user: false,
-                  icon_url: users[event.user].profile.image_48,
-                  link_names: true,
-                  username: users[event.user].name,
+          preprocessText(srcTeam, event.text)
+            .then((text) => {
+              getUsername(srcTeam, event.user)
+                .then((username) => {
+                  desTeam.web.chat.postMessage({
+                    channel: desTeam.channelId,
+                    text: text,
+                    as_user: false,
+                    icon_url: users[event.user].profile.image_48,
+                    link_names: true,
+                    username: users[event.user].name,
+                  });
                 });
-              });
-          }
+            });
           break;
         case 'bot_message':
           // Do nothing to prevent infinit loop.
